@@ -93,7 +93,8 @@ router.route('/point')
 
     /* 1) Método: Criar Usuario (acessar em: POST http://localhost:8080/api/usuarios */
     .post(function(req, res) {
-        var point = new Point();
+    
+        var point = {};
         // var parkings = new Parking();
 
         // get coordinates [ <longitude> , <latitude> ]
@@ -101,40 +102,39 @@ router.route('/point')
         coords[1] = parseFloat(req.body.loc.longitude) || 0;
         coords[0] = parseFloat(req.body.loc.latitude) || 0;
 
+        const success = (post) => {
+
+          var query = { area: {
+              $geoIntersects: {
+                 $geometry: {
+                    type: "Point" ,
+                    coordinates:  post.loc
+                 }
+              }
+            }
+          };
+
+          return Parking.find(query).exec()
+        }
+          
         //aqui setamos os campos do usuario (que virá do request)
         point.loc = coords;
         point.carrierId = req.body.carrierId;
-
-        point.save(function(error, post) {
-            if(error)
-              res.send(error);
-            var query = { area: {
-                          $geoIntersects: {
-                             $geometry: {
-                                type: "Point" ,
-                                coordinates:  post.loc
-                             }
-                          }
-                        }
+    
+        Point.create(point)
+          .then(success)
+          .then( (data) => {
+            var result = {
+              _id: post._id,
+              data: post.data,
+              loc: post.loc,
+              carrierId: post.carrierId,
+              parking: locations[0].name
             };
-
-            Parking.find(query)
-            .exec()
-            .then( (data) => {
-              var result = {
-                _id: post._id,
-                data: post.data,
-                loc: post.loc,
-                carrierId: post.carrierId,
-                parking: locations[0].name
-              };
-              res.json(200, result);
-            })
-            .catch( (error) => {
-              console.log(error);
-            });
-          });
-        })
+            return res.json(200, result);
+          })
+          .catch((error) => res.send(error))    
+    })
 
 
     /* 2) Método: Selecionar Todos (acessar em: GET http://locahost:8080/api/usuarios) */
